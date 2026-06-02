@@ -1,0 +1,21 @@
+{
+  "name": "qqsg-toolbox-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "animal-island-vue": "^0.1.3",
+    "vue": "^3.4.15",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.3",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.11",
+    "vue-tsc": "^2.0.6"
+  }
+}

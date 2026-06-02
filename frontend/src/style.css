@@ -1,0 +1,149 @@
+/* ─── 全局动森风格背景 ─── */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  /* animal-island 的米色沙滩色调 */
+  background: #fbf6e4;
+  color: #725d42;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* 让全局所有原生数字输入框去掉 spin */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* 全局滚动条（动森黄色拨片） */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e6d8a6;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #cdb87a;
+}
+
+/* 通用高亮文字（用于数值红色） */
+.hl-num {
+  color: #fc736d;
+  font-weight: 700;
+}
+
+/* ─────────────────────────────────────────────────
+ * animal-island Select 下拉面板修正
+ * 库默认通过内联 style 让面板朝左/右弹出（动森原生指针风），
+ * 在我们的两列网格里会与下一行卡片视觉重叠，所以这里强制
+ * 让面板回归到触发器正下方，并补上更明显的描边/阴影。
+ * ───────────────────────────────────────────────── */
+.animal-select {
+  width: 100%;
+  display: block;
+  position: relative;
+}
+.animal-select__trigger {
+  width: 100%;
+  box-sizing: border-box;
+}
+.animal-select__dropdown {
+  /* 覆盖组件内联 style 中的 left/right/top/bottom/transform/margin */
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  left: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  transform: none !important;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(360px, 90vw);
+  box-sizing: border-box;
+  /* 视觉强化：加描边 + 厚阴影，使其从卡片背景中浮出 */
+  border: 2px solid #f0c95a;
+  box-shadow: 0 10px 24px -6px rgba(125, 95, 40, 0.28),
+    0 4px 0 #e0b94d;
+  /* 兜底高 z-index，避免被同层兄弟元素覆盖 */
+  z-index: 1000 !important;
+  /* 限制最大高度，超出滚动；保持足够展示约 6 个选项
+   * 注意：组件库自身 .animal-select__dropdown[data-v-xxx] 写死 overflow:visible，
+   * 优先级 (0,1,1) 高于普通类选择器，所以这里必须 !important 覆盖。 */
+  max-height: 260px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  /* Firefox 滚动条 */
+  scrollbar-width: thin;
+  scrollbar-color: #e0b94d transparent;
+  /* 让滚动更顺滑 */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+/* 下拉内的 webkit 滚动条样式（动森黄拨片） */
+.animal-select__dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+.animal-select__dropdown::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+.animal-select__dropdown::-webkit-scrollbar-thumb {
+  background: #e6cf7c;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.animal-select__dropdown::-webkit-scrollbar-thumb:hover {
+  background: #d4b347;
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.animal-select__option {
+  /* 让左侧光标空位居左、文本左对齐，避免居中导致选项漂浮感 */
+  justify-content: flex-start !important;
+  /* 留出更多左 padding 给 hover 时的手指光标 SVG（width:35px），
+   * 配合下面把光标的 left 从 -12px 改为 0，避免被 overflow:hidden 裁掉 */
+  padding-left: 30px !important;
+}
+/* 组件原来用 .animal-select__option--hovered::before 在 left:-12px 处
+ * 显示一个手指光标（动森风），开启 overflow:hidden 后会被裁切。
+ * 把它向内推到选项左侧，并稍微缩小，保证在滚动容器里完整可见。 */
+.animal-select__option--hovered::before {
+  left: 0 !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+
+/* 关键修复：Card 组件自身 :hover 有 transform，会创建新的层叠上下文，
+ * 导致用户从打开的下拉移到下一张卡片时，下一张卡片"盖住"上面的下拉，
+ * 又因为 transition .3s ease-out，鼠标离开后还要等一会儿过渡结束，
+ * 才能恢复正常层叠（表现为：下拉先消失再浮现）。
+ *
+ * 解决：当 Select 打开下拉时，让 Select 本身、它所在的 Field、以及
+ * 包裹它的 Card（animal-card）都抬到非常高的 z-index，越过任何兄弟
+ * Card 的 hover-stacking-context。:has() 在 Wails Webview2/Chromium
+ * 105+ 已支持。
+ */
+.animal-select:has(.animal-select__dropdown) {
+  z-index: 1000;
+}
+.animal-card:has(.animal-select__dropdown) {
+  position: relative;
+  z-index: 1000 !important;
+}
+/* 同时关掉父级 Card 的 hover 抬升，避免与下拉互相干扰 */
+.animal-card:has(.animal-select__dropdown):hover {
+  transform: none !important;
+}
