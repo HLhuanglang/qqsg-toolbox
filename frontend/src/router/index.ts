@@ -27,6 +27,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '开灵属性' },
   },
   {
+    path: '/record/yulin',
+    name: 'record-yulin',
+    component: () => import('@/views/RecordYulin.vue'),
+    meta: { title: '羽灵记录' },
+  },
+  {
     path: '/profile',
     name: 'profile',
     component: () => import('@/views/Profile.vue'),

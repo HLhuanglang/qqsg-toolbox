@@ -39,8 +39,8 @@
         <div class="footer">
           <div class="footer-actions">
             <router-link to="/profile" class="footer-btn" active-class="active">
-              <span class="footer-btn-icon">🦊</span>
-              <span class="footer-btn-label">个人中心</span>
+              <span class="footer-btn-icon">{{ activeAccount?.avatar || '🦊' }}</span>
+              <span class="footer-btn-label">{{ activeAccount?.nickname || '个人中心' }}</span>
             </router-link>
             <router-link to="/settings" class="footer-btn" active-class="active">
               <span class="footer-btn-icon">⚙️</span>
@@ -65,6 +65,7 @@
 import { reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Cursor } from 'animal-island-vue'
+import { activeAccount } from '@/logic/account'
 
 interface MenuChild {
   path: string
@@ -89,6 +90,16 @@ const menuGroups: MenuGroup[] = [
       { path: '/soul/awaken', label: '开灵属性' },
       { path: '/soul/craft', label: '升阶开灵' },
     ],
+  },
+  {
+    key: "record",
+    label: "记录器",
+    icon: "📓",
+    children: [
+      { path: '/record/yulin', label: '羽灵' },
+      { path: '/record/bazhentu', label: '八阵图' },
+      { path: '/record/city',label:'投城'}
+    ]
   },
 ]
 
