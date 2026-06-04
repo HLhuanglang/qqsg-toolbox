@@ -33,6 +33,18 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '羽灵记录' },
   },
   {
+    path: '/record/bazhentu',
+    name: 'record-bazhentu',
+    component: () => import('@/views/RecordBazhentu.vue'),
+    meta: { title: '八阵图记录' },
+  },
+  {
+    path: '/record/city',
+    name: 'record-city',
+    component: () => import('@/views/RecordCity.vue'),
+    meta: { title: '投城记录' },
+  },
+  {
     path: '/profile',
     name: 'profile',
     component: () => import('@/views/Profile.vue'),
