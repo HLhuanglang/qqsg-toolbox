@@ -214,6 +214,7 @@ export function initialCost(p: WeeklyPrices): number {
 /* ────────────────────────────────────────────────────────── */
 
 import { scopedKey } from './account'
+import { storage } from './kvStore'
 
 const STORE_KEY_BASE = 'qqsg.record.yulin.v1'
 
@@ -229,7 +230,7 @@ function keyFor(accountId?: string): string {
 
 export function loadStore(): Store {
   try {
-    const raw = localStorage.getItem(keyFor())
+    const raw = storage.get(keyFor())
     if (!raw) return { records: [] }
     const obj = JSON.parse(raw) as Store
     if (!obj.records) obj.records = []
@@ -246,7 +247,7 @@ export function loadStore(): Store {
 
 export function saveStore(s: Store): void {
   try {
-    localStorage.setItem(keyFor(), JSON.stringify(s))
+    storage.set(keyFor(), JSON.stringify(s))
   } catch (e) {
     console.error('[yulin] save failed', e)
   }
@@ -255,7 +256,7 @@ export function saveStore(s: Store): void {
 /** 删除某账户的羽灵记录数据（账户被删除时调用） */
 export function clearAccountData(accountId: string): void {
   try {
-    localStorage.removeItem(keyFor(accountId))
+    storage.remove(keyFor(accountId))
   } catch (e) {
     console.warn('[yulin] clearAccountData failed', e)
   }

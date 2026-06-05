@@ -25,11 +25,22 @@
         </div>
         <div class="row">
           <div class="row-main">
-            <div class="row-title">缓存清理</div>
-            <div class="row-sub">清除浏览器本地缓存（不影响游戏数据）</div>
+            <div class="row-title">存档位置</div>
+            <div class="row-sub" :title="storePath">
+              {{ storePath || '尚未初始化' }}
+            </div>
           </div>
           <div class="row-tail">
-            <button class="btn" @click="clearCache">清理</button>
+            <button class="btn" @click="openStoreViewer">查看</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-main">
+            <div class="row-title">清空记录器数据</div>
+            <div class="row-sub">删除所有账户、羽灵 / 八阵图 / 投城 等记录（无法恢复）</div>
+          </div>
+          <div class="row-tail">
+            <button class="btn danger" @click="clearCache">清空</button>
           </div>
         </div>
       </Card>
@@ -44,7 +55,7 @@
       </Card>
     </div>
 
-    <!-- ── 数据查看模态 ── -->
+    <!-- ── 数据来源 · 文件浏览 ── -->
     <div v-if="viewerOpen" class="modal-mask" @click.self="closeDataViewer">
       <div class="modal">
         <div class="modal-head">
@@ -98,6 +109,57 @@
         </div>
       </div>
     </div>
+
+    <!-- ── 存档查看 ── -->
+    <div v-if="storeViewerOpen" class="modal-mask" @click.self="closeStoreViewer">
+      <div class="modal">
+        <div class="modal-head">
+          <div class="modal-title">存档位置 · 键值浏览</div>
+          <button class="close-btn" @click="closeStoreViewer">✕</button>
+        </div>
+
+        <div class="modal-meta">
+          <span class="meta-tag disk">本地存档</span>
+          <span class="meta-path" :title="storePath">{{ storePath || '(未初始化)' }}</span>
+        </div>
+
+        <div class="modal-body">
+          <aside class="file-list">
+            <div v-if="storeKeys.length === 0" class="empty">暂无存档数据</div>
+            <button
+              v-for="k in storeKeys"
+              :key="k.key"
+              class="file-item"
+              :class="{ active: k.key === currentStoreKey }"
+              @click="selectStoreKey(k.key)"
+              :title="describeStoreKey(k.key)"
+            >
+              <div class="file-row">
+                <span class="file-name">{{ k.shortLabel }}</span>
+                <span class="file-size">{{ formatSize(k.size) }}</span>
+              </div>
+              <div class="file-desc">{{ describeStoreKey(k.key) }}</div>
+            </button>
+          </aside>
+
+          <section class="file-content">
+            <div v-if="!currentStoreKey" class="empty pad">
+              在左侧选择一个键查看内容
+            </div>
+            <template v-else>
+              <div class="content-desc">
+                <span class="content-desc-icon">🗝️</span>
+                <span class="content-desc-text">
+                  <code class="key-inline">{{ currentStoreKey }}</code>
+                  · {{ describeStoreKey(currentStoreKey) }}
+                </span>
+              </div>
+              <pre class="code"><code>{{ currentStoreContent }}</code></pre>
+            </template>
+          </section>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -108,10 +170,13 @@ import {
   GetDataDir,
   ListDataFiles,
   ReadDataFile,
+  KVStorePath,
 } from '@/../wailsjs/go/backend/App'
 import type { entity } from '@/../wailsjs/go/models'
+import { storage } from '@/logic/kvStore'
 
 const dataDir = ref<string>('')
+const storePath = ref<string>('')
 const isEmbedded = computed(() => dataDir.value === '(embedded)' || !dataDir.value)
 const dataSourceLabel = computed(() => {
   if (!dataDir.value) return '本地 JSON · 离线可用'
@@ -125,6 +190,11 @@ onMounted(async () => {
     dataDir.value = await GetDataDir()
   } catch {
     dataDir.value = ''
+  }
+  try {
+    storePath.value = await KVStorePath()
+  } catch {
+    storePath.value = ''
   }
 })
 
@@ -213,11 +283,89 @@ function describeFile(path: string): string {
   return '工具箱使用的本地 JSON 数据'
 }
 
-function clearCache() {
+/* ─── 存档查看 ─── */
+
+interface StoreKeyItem {
+  key: string
+  shortLabel: string
+  size: number
+}
+
+const storeViewerOpen = ref(false)
+const storeKeys = ref<StoreKeyItem[]>([])
+const currentStoreKey = ref('')
+const currentStoreContent = ref('')
+
+/** 业务模块的 key 中文用途说明 */
+const STORE_KEY_DESCRIPTIONS: { match: RegExp; desc: string }[] = [
+  { match: /^qqsg\.accounts\.v1$/, desc: '账户列表与当前活跃账户' },
+  { match: /^qqsg\.record\.yulin\.v1::/, desc: '羽灵记录器：每周培养与材料价格' },
+  { match: /^qqsg\.record\.bazhentu\.v1::/, desc: '八阵图记录器（旧版快照格式）' },
+  { match: /^qqsg\.record\.bazhentu\.v2::/, desc: '八阵图记录器：每周属性增量与战阵评分' },
+  { match: /^qqsg\.record\.city\.v1::/, desc: '投城记录器：每周城市投资与产出' },
+  { match: /^qqsg\.kv\.migrated\.v1$/, desc: '迁移标记（首次启动是否已把 localStorage 数据迁到本存档）' },
+]
+
+function describeStoreKey(key: string): string {
+  if (!key) return ''
+  for (const { match, desc } of STORE_KEY_DESCRIPTIONS) {
+    if (match.test(key)) return desc
+  }
+  return '工具箱本地业务数据'
+}
+
+/** 把 ::accountId 后缀截短，便于在窄列表里展示 */
+function shortenStoreKey(key: string): string {
+  const idx = key.indexOf('::')
+  if (idx < 0) return key
+  const base = key.slice(0, idx)
+  const acc = key.slice(idx + 2)
+  const accShort = acc.length > 6 ? acc.slice(0, 4) + '…' + acc.slice(-2) : acc
+  return `${base}::${accShort}`
+}
+
+function refreshStoreKeys(): void {
+  const keys = storage.keys('qqsg.')
+  const items: StoreKeyItem[] = keys
+    .map((k) => ({
+      key: k,
+      shortLabel: shortenStoreKey(k),
+      size: (storage.get(k) ?? '').length,
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key))
+  storeKeys.value = items
+}
+
+function openStoreViewer() {
+  refreshStoreKeys()
+  storeViewerOpen.value = true
+  // 默认打开第一个
+  if (storeKeys.value.length > 0) {
+    selectStoreKey(storeKeys.value[0].key)
+  }
+}
+
+function closeStoreViewer() {
+  storeViewerOpen.value = false
+}
+
+function selectStoreKey(key: string) {
+  currentStoreKey.value = key
+  const raw = storage.get(key) ?? ''
+  currentStoreContent.value = prettify(raw)
+}
+
+async function clearCache() {
+  if (!confirm('将清空所有账户与记录器数据，此操作不可恢复。是否继续？')) return
   try {
-    localStorage.clear()
-    sessionStorage.clear()
-    alert('本地缓存已清理')
+    await storage.clearAll()
+    try {
+      sessionStorage.clear()
+    } catch {
+      /* ignore */
+    }
+    alert('已清空。应用将重新加载以应用更改。')
+    location.reload()
   } catch (e) {
     alert('清理失败：' + e)
   }
@@ -282,6 +430,15 @@ function clearCache() {
 .btn:hover {
   background: #fff8de;
   transform: translateY(-1px);
+}
+.btn.danger {
+  border-color: #e9b3a3;
+  color: #b34a32;
+  background: #fff5f0;
+  box-shadow: 0 2px 0 #e9b3a3;
+}
+.btn.danger:hover {
+  background: #ffe9dd;
 }
 .btn:active {
   transform: translateY(1px);
@@ -478,6 +635,19 @@ function clearCache() {
 .content-desc-text {
   flex: 1;
   font-weight: 600;
+  word-break: break-all;
+}
+.key-inline {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-right: 4px;
+  border-radius: 6px;
+  background: #fff5d9;
+  border: 1px solid #e7dcb1;
+  font-family: ui-monospace, Consolas, "Courier New", monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #8a6618;
 }
 .code {
   margin: 0;

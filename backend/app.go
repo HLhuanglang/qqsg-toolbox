@@ -22,12 +22,16 @@ type App struct {
 	dataFS        fs.FS
 	dataDirOnDisk string // 仅当从磁盘加载时记录路径，方便排查
 	soulService   *service.SoulService
+	kv            *service.KVStore
 }
 
 // NewApp creates a new App application struct.
 // dataFS 是构建期通过 //go:embed all:data 注入的只读文件系统。
 func NewApp(dataFS embed.FS) *App {
-	return &App{embeddedData: dataFS}
+	return &App{
+		embeddedData: dataFS,
+		kv:           service.NewKVStore(),
+	}
 }
 
 // Startup is called when the app starts. The context is saved
@@ -36,7 +40,57 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.resolveDataFS()
 	a.soulService = service.NewSoulService(a.dataFS)
+	if err := a.kv.Load(); err != nil {
+		runtime.LogWarningf(a.ctx, "KV store 加载失败: %v", err)
+	} else {
+		runtime.LogInfof(a.ctx, "KV store 路径: %s", a.kv.Path())
+	}
 	a.startDataWatcher()
+}
+
+// ─────────────────── KV 持久化（前端调用） ───────────────────
+
+// KVGetAll 返回所有持久化的键值，前端启动时一次性载入内存缓存。
+func (a *App) KVGetAll() (map[string]string, error) {
+	return a.kv.All(), nil
+}
+
+// KVGet 读取单个 key。不存在则返回空字符串。
+func (a *App) KVGet(key string) (string, error) {
+	v, _ := a.kv.Get(key)
+	return v, nil
+}
+
+// KVSet 写入单个 key，立即落盘。
+func (a *App) KVSet(key, value string) error {
+	if err := a.kv.Set(key, value); err != nil {
+		runtime.LogErrorf(a.ctx, "KVSet(%s) 失败: %v", key, err)
+		return err
+	}
+	return nil
+}
+
+// KVDelete 删除单个 key。
+func (a *App) KVDelete(key string) error {
+	if err := a.kv.Delete(key); err != nil {
+		runtime.LogErrorf(a.ctx, "KVDelete(%s) 失败: %v", key, err)
+		return err
+	}
+	return nil
+}
+
+// KVClear 清空所有 KV（用于"重置应用数据"）。
+func (a *App) KVClear() error {
+	if err := a.kv.Clear(); err != nil {
+		runtime.LogErrorf(a.ctx, "KVClear 失败: %v", err)
+		return err
+	}
+	return nil
+}
+
+// KVStorePath 暴露存储文件路径，便于在"设置"页展示与排查。
+func (a *App) KVStorePath() string {
+	return a.kv.Path()
 }
 
 // GetDataDir returns the resolved data source description.

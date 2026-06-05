@@ -23,6 +23,7 @@
  */
 
 import { scopedKey } from './account'
+import { storage } from './kvStore'
 
 /* ────────────────────────────────────────────────────────── */
 /* 类型 & 常量                                                */
@@ -257,7 +258,7 @@ function normalizeRecord(r: any): CityRecord {
 
 export function loadStore(): Store {
   try {
-    const raw = localStorage.getItem(keyFor())
+    const raw = storage.get(keyFor())
     if (!raw) return { records: [] }
     const obj = JSON.parse(raw) as Store
     const records = Array.isArray(obj.records) ? obj.records.map(normalizeRecord) : []
@@ -272,7 +273,7 @@ export function loadStore(): Store {
 
 export function saveStore(s: Store): void {
   try {
-    localStorage.setItem(keyFor(), JSON.stringify(s))
+    storage.set(keyFor(), JSON.stringify(s))
   } catch (e) {
     console.error('[city] save failed', e)
   }
@@ -281,7 +282,7 @@ export function saveStore(s: Store): void {
 /** 删除某账户的投城数据（账户被删除时调用） */
 export function clearAccountData(accountId: string): void {
   try {
-    localStorage.removeItem(keyFor(accountId))
+    storage.remove(keyFor(accountId))
   } catch (e) {
     console.warn('[city] clearAccountData failed', e)
   }

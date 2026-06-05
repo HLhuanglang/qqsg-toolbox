@@ -7,6 +7,7 @@
  * - 账户列表 / 当前账户均为响应式，组件内 `import` 即可监听
  */
 import { computed, ref } from 'vue'
+import { storage } from './kvStore'
 
 export interface Account {
   id: string
@@ -39,7 +40,7 @@ function genId(): string {
 
 function loadFromStorage(): AccountStoreData {
   try {
-    const raw = localStorage.getItem(STORE_KEY)
+    const raw = storage.get(STORE_KEY)
     if (!raw) return { accounts: [], activeId: null }
     const obj = JSON.parse(raw) as AccountStoreData
     if (!Array.isArray(obj.accounts)) obj.accounts = []
@@ -52,11 +53,20 @@ function loadFromStorage(): AccountStoreData {
   }
 }
 
-const _data = ref<AccountStoreData>(loadFromStorage())
+/**
+ * 注意：模块顶层不再立即调用 loadFromStorage()/bootstrap()。
+ * 必须由 main.ts 在 `await initKVStore()` 完成之后调用 `initAccountStore()`，
+ * 否则 storage 还没准备好，会导致读到空数据并错误地创建一个新的"默认账户"，
+ * 进而把磁盘上恢复出来的真实账户记录覆盖掉。
+ */
+const _data = ref<AccountStoreData>({ accounts: [], activeId: null })
+let _initialized = false
 
 function persist(): void {
+  // 在 init 完成前的写入会污染恢复数据，直接拒绝（理论上业务代码不会走到这里）
+  if (!_initialized) return
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(_data.value))
+    storage.set(STORE_KEY, JSON.stringify(_data.value))
   } catch (e) {
     console.error('[account] save failed', e)
   }
@@ -81,10 +91,10 @@ function bootstrap(): void {
 
     // 把旧版未隔离的羽灵数据迁移到当前默认账户下
     try {
-      const legacy = localStorage.getItem(LEGACY_YULIN_KEY)
+      const legacy = storage.get(LEGACY_YULIN_KEY)
       if (legacy) {
-        localStorage.setItem(`${LEGACY_YULIN_KEY}::${id}`, legacy)
-        localStorage.removeItem(LEGACY_YULIN_KEY)
+        storage.set(`${LEGACY_YULIN_KEY}::${id}`, legacy)
+        storage.remove(LEGACY_YULIN_KEY)
       }
     } catch (e) {
       console.warn('[account] migrate legacy yulin failed', e)
@@ -101,7 +111,16 @@ function bootstrap(): void {
   }
 }
 
-bootstrap()
+/**
+ * 必须在 `initKVStore()` 完成之后调用一次。
+ * 重复调用幂等；可以在 main.ts 中放心 await。
+ */
+export function initAccountStore(): void {
+  if (_initialized) return
+  _data.value = loadFromStorage()
+  _initialized = true
+  bootstrap()
+}
 
 /* ─── 对外响应式状态 ─── */
 
