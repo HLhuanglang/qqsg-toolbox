@@ -29,10 +29,8 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        app.Startup,
-		// 把日志统一打到标准输出，并设到 DEBUG 级别，
-		// 这样 wails dev 终端能看到所有 runtime.LogXxx 输出（包含错误）。
+		BackgroundColour:   &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		OnStartup:          app.Startup,
 		Logger:             logger.NewDefaultLogger(),
 		LogLevel:           logger.DEBUG,
 		LogLevelProduction: logger.ERROR,

@@ -19,7 +19,7 @@ import (
 type App struct {
 	ctx           context.Context
 	embeddedData  embed.FS
-	dataFS        fs.FS
+	soulDataFS    fs.FS
 	dataDirOnDisk string // 仅当从磁盘加载时记录路径，方便排查
 	soulService   *service.SoulService
 	kv            *service.KVStore
@@ -38,8 +38,8 @@ func NewApp(dataFS embed.FS) *App {
 // so we can call the runtime methods
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
-	a.resolveDataFS()
-	a.soulService = service.NewSoulService(a.dataFS)
+	a.resolveSoulDataFS()
+	a.soulService = service.NewSoulService(a.soulDataFS)
 	if err := a.kv.Load(); err != nil {
 		runtime.LogWarningf(a.ctx, "KV store 加载失败: %v", err)
 	} else {
@@ -105,11 +105,11 @@ func (a *App) GetDataDir() string {
 // ListDataFiles 列出 data/ 下所有 .json 文件（递归）。
 // 同时支持磁盘模式与嵌入模式。
 func (a *App) ListDataFiles() ([]entity.DataFileInfo, error) {
-	if a.dataFS == nil {
+	if a.soulDataFS == nil {
 		return []entity.DataFileInfo{}, nil
 	}
 	var out []entity.DataFileInfo
-	err := fs.WalkDir(a.dataFS, ".", func(p string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(a.soulDataFS, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -137,7 +137,7 @@ func (a *App) ListDataFiles() ([]entity.DataFileInfo, error) {
 // ReadDataFile 读取 data/ 下单个 JSON 文件原文。
 // path 必须使用相对路径（如 "soul/levels.json"），禁止 ".." 上跳。
 func (a *App) ReadDataFile(path string) (string, error) {
-	if a.dataFS == nil {
+	if a.soulDataFS == nil {
 		return "", nil
 	}
 	clean := filepath.ToSlash(filepath.Clean(path))
@@ -147,7 +147,7 @@ func (a *App) ReadDataFile(path string) (string, error) {
 	if !strings.HasSuffix(strings.ToLower(clean), ".json") {
 		return "", os.ErrInvalid
 	}
-	data, err := fs.ReadFile(a.dataFS, clean)
+	data, err := fs.ReadFile(a.soulDataFS, clean)
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "ReadDataFile(%s) 失败: %v", clean, err)
 		return "", err
@@ -182,10 +182,10 @@ func (a *App) GetSoulAwaken() (*entity.SoulAwakenData, error) {
 	return data, err
 }
 
-// resolveDataFS 决定运行期 dataFS 来源：
+// resolveSoulDataFS 决定运行期 dataFS 来源：
 //  1. 优先使用磁盘上的 data/ 目录（便于开发期热改 JSON）
 //  2. 找不到则回退到构建期嵌入的 embed.FS
-func (a *App) resolveDataFS() {
+func (a *App) resolveSoulDataFS() {
 	candidates := []string{
 		"data",
 		filepath.Join("..", "data"),
@@ -205,16 +205,16 @@ func (a *App) resolveDataFS() {
 		if _, err := os.Stat(filepath.Join(dir, "soul")); err == nil {
 			abs, _ := filepath.Abs(dir)
 			a.dataDirOnDisk = abs
-			a.dataFS = os.DirFS(abs)
+			a.soulDataFS = os.DirFS(abs)
 			return
 		}
 	}
 
 	// 回退到嵌入数据。embed 时根目录即 "data"，需 Sub 一层使路径与磁盘模式一致。
 	if sub, err := fs.Sub(a.embeddedData, "data"); err == nil {
-		a.dataFS = sub
+		a.soulDataFS = sub
 	} else {
-		a.dataFS = a.embeddedData
+		a.soulDataFS = a.embeddedData
 	}
 }
 

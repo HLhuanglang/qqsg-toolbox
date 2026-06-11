@@ -3,8 +3,8 @@ import App from './App.vue'
 import router from './router'
 import 'animal-island-vue/style'
 import './style.css'
-import { initKVStore } from './logic/kvStore'
-import { initAccountStore } from './logic/account'
+import { initKVStore } from '@/logic/kvStore'
+import { initAccountStore } from '@/logic/account'
 
 // 启动顺序非常关键：
 //   1) 先把后端持久化数据加载进内存（含一次性 localStorage → 后端迁移）。

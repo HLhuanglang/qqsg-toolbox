@@ -3,11 +3,6 @@
     <div class="app">
       <!-- ────── 侧边栏 ────── -->
       <aside class="sidebar" :style="{ width: sidebarWidth + 'px' }">
-        <!-- <div class="brand">
-          <Icon name="icon-miles" :size="26" bounce />
-          <span class="brand-text">QQ三国 工具箱</span>
-        </div> -->
-
         <nav class="menu">
           <div v-for="group in menuGroups" :key="group.key" class="menu-group">
             <div

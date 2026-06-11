@@ -18,7 +18,7 @@ func NewSoulService(fsys fs.FS) *SoulService {
 
 // GetSoulCatalog 读取灵魂图鉴数据
 func (s *SoulService) GetSoulCatalog() (*entity.SoulCatalogData, error) {
-	data, err := fs.ReadFile(s.fsys, entity.SoulCatlogConfigPath)
+	data, err := fs.ReadFile(s.fsys, entity.SoulCatalogConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("读取 soul_catalog.json 失败: %w", err)
 	}
