@@ -23,7 +23,7 @@
                   class="menu-item"
                   active-class="active"
                 >
-                  <span class="leaf">🍃</span>
+                  <!-- <span class="leaf">🍃</span> -->
                   <span class="label">{{ child.label }}</span>
                 </router-link>
               </div>
@@ -93,7 +93,8 @@ const menuGroups: MenuGroup[] = [
     children: [
       { path: '/record/yulin', label: '羽灵' },
       { path: '/record/bazhentu', label: '八阵图' },
-      { path: '/record/city',label:'投城'}
+      { path: '/record/city',label:'投城'},
+      { path: '/record/asset', label: '资产' }
     ]
   },
 ]

@@ -45,6 +45,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '投城记录' },
   },
   {
+    path: '/record/asset',
+    name: 'record-asset',
+    component: () => import('@/views/RecordAsset.vue'),
+    meta: { title: '资产记录' },
+  },
+  {
     path: '/profile',
     name: 'profile',
     component: () => import('@/views/Profile.vue'),

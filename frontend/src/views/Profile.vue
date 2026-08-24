@@ -137,6 +137,7 @@ import {
 import { clearAccountData as clearYulinData, loadStore as loadYulinStore } from '@/logic/yulin'
 import { clearAccountData as clearCityData } from '@/logic/city'
 import { clearAccountData as clearBazhentuData } from '@/logic/bazhentu'
+import { clearAccountData as clearAssetData } from '@/logic/asset'
 
 const modalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -204,6 +205,7 @@ function confirmDelete(a: Account): void {
       clearYulinData(id)
       clearCityData(id)
       clearBazhentuData(id)
+      clearAssetData(id)
     },
   })
 }

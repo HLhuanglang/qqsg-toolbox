@@ -18,10 +18,7 @@ var assets embed.FS
 var dataFS embed.FS
 
 func main() {
-	// Create an instance of the app structure
 	app := backend.NewApp(dataFS)
-
-	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "qqsg-toolbox",
 		Width:  1024,
@@ -38,7 +35,6 @@ func main() {
 			app,
 		},
 	})
-
 	if err != nil {
 		println("Error:", err.Error())
 	}
